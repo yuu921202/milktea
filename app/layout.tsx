@@ -16,7 +16,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-TW">
-<body className={`${inter.className} bg-amber-50 min-h-screen`}>
+      <head>
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/manifest.json" />
+      </head>
+      <body className={`${inter.className} bg-amber-50 min-h-screen`}>
         {children}
       </body>
     </html>

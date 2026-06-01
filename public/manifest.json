@@ -1,0 +1,15 @@
+{
+  "name": "倉鼠幫",
+  "short_name": "倉鼠幫",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/catalog",
+  "display": "standalone",
+  "background_color": "#fffbeb",
+  "theme_color": "#f59e0b"
+}
