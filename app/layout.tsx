@@ -20,6 +20,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-TW">
+      <head>
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+      </head>
       <body className={`${inter.className} bg-amber-50 min-h-screen`}>
         {children}
       </body>
