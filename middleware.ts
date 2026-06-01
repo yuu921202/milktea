@@ -10,7 +10,8 @@ export async function middleware(req: NextRequest) {
   if (
     PUBLIC_PATHS.some((p) => pathname.startsWith(p)) ||
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/favicon')
+    pathname.startsWith('/favicon') ||
+    /\.(png|jpg|jpeg|gif|svg|ico|webp|json|txt|xml)$/.test(pathname)
   ) {
     return NextResponse.next()
   }
