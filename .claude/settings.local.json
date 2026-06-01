@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@14 . --typescript --tailwind --app --no-src-dir --no-eslint --import-alias \"@/*\" --yes)",
+      "Bash(npx create-next-app@14 purin-catalog --typescript --tailwind --app --no-src-dir --no-eslint --import-alias \"@/*\" --yes)",
+      "Bash(curl -sc /tmp/mercari_cookies.txt https://jp.mercari.com/ -H 'User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/124.0.0.0 Safari/537.36' -H 'Accept-Language: ja-JP,ja;q=0.9' -o /dev/null -w '%{http_code}')",
+      "Read(//tmp/**)",
+      "Bash(curl -s 'https://api.mercari.jp/v2/entities:search?pageSize=3&searchCondition.keyword=%E3%83%9D%E3%83%A0%E3%83%9D%E3%83%A0%E3%83%97%E3%83%AA%E3%83%B3&searchCondition.status=STATUS_ON_SALE' -b /tmp/mercari_cookies.txt -H 'X-Platform: web' -H 'Accept: application/json' -H 'Origin: https://jp.mercari.com')",
+      "Bash(curl -s \"https://web-jp-assets-v2.mercdn.net/_next/static/chunks/13499-fe80c93367f5fff6.js\")",
+      "Bash(node test-scraper.mjs)",
+      "Bash(curl -s 'https://fril.jp/search?query=%E3%83%9D%E3%83%A0%E3%83%9D%E3%83%A0%E3%83%97%E3%83%AA%E3%83%B3&sort=sold_desc' -H 'User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36' -o /tmp/fril.html)",
+      "Bash(curl -s 'https://fril.jp/api/items/search?query=%E3%83%9D%E3%83%A0%E3%83%9D%E3%83%A0%E3%83%97%E3%83%AA%E3%83%B3&page=1&limit=20' -H 'User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36' -H 'Accept: application/json')",
+      "Bash(curl -s 'https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601?applicationId=test&keyword=%E3%83%9D%E3%83%A0%E3%83%9D%E3%83%A0%E3%83%97%E3%83%AA%E3%83%B3&hits=10' -H 'Accept: application/json')",
+      "Bash(curl -s https://jp.mercari.com/items/m12345 -H 'User-Agent: Mozilla/5.0')",
+      "Bash(curl -s 'https://aucfan.com/search1/?q=%E3%83%9D%E3%83%A0%E3%83%9D%E3%83%A0%E3%83%97%E3%83%AA%E3%83%B3&auccat=&t=p1' -H 'User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36' -o /tmp/aucfan.html)",
+      "Bash(curl -s https://jp.mercari.com/ -H 'User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36')",
+      "Bash(curl -s https://jp.mercari.com/api/config -H 'User-Agent: Mozilla/5.0' -H 'Accept: application/json')",
+      "Bash(curl -s https://api.mercari.jp/v1/config -H 'X-Platform: web' -H 'Accept: application/json')",
+      "Bash(npm install *)",
+      "Bash(npx playwright *)",
+      "Bash(node scripts/scrape-mercari.mjs)",
+      "Bash(node /tmp/check.mjs)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\簡\\\\Desktop\\\\奶茶\\\\lib\\\\scrapers\\\\xianyu.ts\" -Force)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\簡\\\\Desktop\\\\奶茶\\\\app\\\\api\\\\debug-xianyu\" -Recurse -Force)",
+      "Bash(Write-Host \"done\")"
+    ]
+  }
+}
