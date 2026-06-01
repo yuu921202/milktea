@@ -26,6 +26,7 @@ export default async function CabinetPage({
       .from('products')
       .select('*')
       .eq('cabinet_id', params.cabinetId)
+      .order('sort_order', { ascending: true, nullsFirst: false })
       .order('acquisition_date', { ascending: false }),
     supabase
       .from('price_history')

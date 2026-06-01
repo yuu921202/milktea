@@ -53,9 +53,23 @@ export default async function CatalogPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-8">
-        <p className="text-xs font-semibold text-amber-500 uppercase tracking-wide mb-5">
-          選擇展示櫃
-        </p>
+        <div className="flex items-center justify-between mb-5">
+          <p className="text-xs font-semibold text-amber-500 uppercase tracking-wide">
+            選擇展示櫃
+          </p>
+          <Link
+            href="/catalog/all"
+            className="flex items-center gap-1.5 text-sm font-medium text-amber-700 bg-white border border-amber-200 hover:bg-amber-50 px-3 py-1.5 rounded-full shadow-sm transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" />
+            </svg>
+            全部商品
+          </Link>
+        </div>
 
         <CabinetCarousel cabinets={cabinetList} grouped={grouped} />
 

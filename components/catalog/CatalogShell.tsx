@@ -1,12 +1,31 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  arrayMove,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { ProductCard } from './ProductCard'
 import { QuickViewDrawer } from './QuickViewDrawer'
+import { updateProductsOrder } from '@/actions/products'
 import type { Product } from '@/types/database'
 
 type MarketPriceMap = Record<string, { avg_price: number | null; sold_avg_price: number | null } | undefined>
-type SortKey = 'date' | 'name' | 'price'
+type SortKey = 'custom' | 'date' | 'name' | 'price'
 type ShelfStyle = 'dark' | 'light' | 'plain'
 
 const TABS = [
@@ -17,9 +36,6 @@ const TABS = [
   { key: 'damaged', label: '損壞' },
 ]
 
-// 3 fixed rows × 3 visible columns per row
-// Products distributed column-by-column: item i → row (i % ROWS)
-// When a row exceeds COLS items it scrolls horizontally
 const ROWS = 3
 const COLS = 3
 
@@ -81,6 +97,173 @@ const SHELF: Record<ShelfStyle, {
   },
 }
 
+// Grip icon for drag handle
+function GripIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+      <circle cx="4" cy="2" r="1.2" />
+      <circle cx="8" cy="2" r="1.2" />
+      <circle cx="4" cy="6" r="1.2" />
+      <circle cx="8" cy="6" r="1.2" />
+      <circle cx="4" cy="10" r="1.2" />
+      <circle cx="8" cy="10" r="1.2" />
+    </svg>
+  )
+}
+
+// Sortable cell for shelf layout
+function SortableShelfCell({
+  product,
+  cfg,
+  isDraggable,
+  favorites,
+  onToggleFavorite,
+  onSelect,
+  rowIdx,
+  colIdx,
+  showEmpty,
+  cabinetEmoji,
+  hasProducts,
+  filteredEmpty,
+  emptyTextColor,
+}: {
+  product: Product
+  cfg: typeof SHELF[ShelfStyle]
+  isDraggable: boolean
+  favorites: Set<string>
+  onToggleFavorite: (id: string) => void
+  onSelect: (p: Product) => void
+  rowIdx: number
+  colIdx: number
+  showEmpty: boolean
+  cabinetEmoji?: string
+  hasProducts: boolean
+  filteredEmpty: boolean
+  emptyTextColor: string
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: product.id,
+    disabled: !isDraggable,
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.25 : 1,
+        position: 'relative',
+        minHeight: 90,
+        backgroundColor: cfg.cellBg,
+        boxShadow: cfg.cellShadow,
+        padding: cfg.cellPad,
+        scrollSnapAlign: 'start',
+      }}
+      {...attributes}
+    >
+      {isDraggable && (
+        <div
+          {...listeners}
+          style={{
+            position: 'absolute',
+            top: 6,
+            left: 6,
+            zIndex: 20,
+            width: 22,
+            height: 22,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(0,0,0,0.18)',
+            borderRadius: 5,
+            cursor: 'grab',
+            touchAction: 'none',
+            color: 'rgba(255,255,255,0.85)',
+          }}
+        >
+          <GripIcon />
+        </div>
+      )}
+      <ProductCard
+        product={product}
+        isFavorite={favorites.has(product.id)}
+        onToggleFavorite={onToggleFavorite}
+        onSelect={onSelect}
+      />
+    </div>
+  )
+}
+
+// Sortable item for grid/horizontal layout
+function SortableGridItem({
+  product,
+  isDraggable,
+  favorites,
+  onToggleFavorite,
+  onSelect,
+  className,
+  style,
+}: {
+  product: Product
+  isDraggable: boolean
+  favorites: Set<string>
+  onToggleFavorite: (id: string) => void
+  onSelect: (p: Product) => void
+  className?: string
+  style?: React.CSSProperties
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: product.id,
+    disabled: !isDraggable,
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={className}
+      style={{
+        ...style,
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.25 : 1,
+        position: 'relative',
+      }}
+      {...attributes}
+    >
+      {isDraggable && (
+        <div
+          {...listeners}
+          style={{
+            position: 'absolute',
+            top: 6,
+            left: 6,
+            zIndex: 20,
+            width: 22,
+            height: 22,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(0,0,0,0.18)',
+            borderRadius: 5,
+            cursor: 'grab',
+            touchAction: 'none',
+            color: 'rgba(255,255,255,0.85)',
+          }}
+        >
+          <GripIcon />
+        </div>
+      )}
+      <ProductCard
+        product={product}
+        isFavorite={favorites.has(product.id)}
+        onToggleFavorite={onToggleFavorite}
+        onSelect={onSelect}
+      />
+    </div>
+  )
+}
+
 export function CatalogShell({
   products,
   latestPrices,
@@ -116,13 +299,38 @@ export function CatalogShell({
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [sortKey, setSortKey] = useState<SortKey>('date')
+  const [sortKey, setSortKey] = useState<SortKey>(() => shelf ? 'custom' : 'date')
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [favorites, setFavorites] = useState<Set<string>>(() => {
     if (typeof window === 'undefined') return new Set()
     try { return new Set(JSON.parse(localStorage.getItem('purin-favorites') ?? '[]')) }
     catch { return new Set() }
   })
+
+  // Local products state — preserves drag order
+  const [localProducts, setLocalProducts] = useState<Product[]>(products)
+
+  // Sync when products prop changes (new product added / deleted)
+  useEffect(() => {
+    setLocalProducts(prev => {
+      const newIds = new Set(products.map(p => p.id))
+      const kept = prev.filter(p => newIds.has(p.id))
+      const keptIds = new Set(kept.map(p => p.id))
+      const added = products.filter(p => !keptIds.has(p.id))
+      return [...kept, ...added]
+    })
+  }, [products])
+
+  // DnD state
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const activeProduct = activeId ? localProducts.find(p => p.id === activeId) ?? null : null
+
+  const isDraggable = sortKey === 'custom' && !search.trim() && statusFilter === 'all'
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+  )
 
   function toggleFavorite(id: string) {
     setFavorites(prev => {
@@ -134,7 +342,7 @@ export function CatalogShell({
   }
 
   const filtered = useMemo(() => {
-    let list = products
+    let list = localProducts
     if (search.trim()) {
       const q = search.toLowerCase()
       list = list.filter(p =>
@@ -143,16 +351,18 @@ export function CatalogShell({
     }
     if (statusFilter === 'favorite') list = list.filter(p => favorites.has(p.id))
     else if (statusFilter !== 'all') list = list.filter(p => p.status === statusFilter)
-    return [...list].sort((a, b) => {
-      if (sortKey === 'name') return a.name.localeCompare(b.name, 'zh-TW')
-      if (sortKey === 'price') return (b.purchase_price ?? 0) - (a.purchase_price ?? 0)
-      return (b.acquisition_date ?? b.created_at).localeCompare(a.acquisition_date ?? a.created_at)
-    })
-  }, [products, search, statusFilter, sortKey, favorites])
 
-  // Distribute products column-by-column: item i → row (i % ROWS)
-  // Row 0 gets items 0, 3, 6, 9...  Row 1 gets 1, 4, 7, 10...  Row 2 gets 2, 5, 8, 11...
-  // Each row is padded to at least COLS cells so empty shelves have visible depth
+    if (sortKey === 'name') return [...list].sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'))
+    if (sortKey === 'price') return [...list].sort((a, b) => (b.purchase_price ?? 0) - (a.purchase_price ?? 0))
+    if (sortKey === 'date') return [...list].sort((a, b) =>
+      (b.acquisition_date ?? b.created_at).localeCompare(a.acquisition_date ?? a.created_at)
+    )
+    return list // 'custom' — preserve localProducts order
+  }, [localProducts, search, statusFilter, sortKey, favorites])
+
+  const sortableIds = useMemo(() => filtered.map(p => p.id), [filtered])
+
+  // Distribute products column-by-column into 3 rows for shelf view
   const rows = useMemo<(Product | null)[][]>(() => {
     if (!shelf) return []
     const r: (Product | null)[][] = Array.from({ length: ROWS }, () => [])
@@ -162,6 +372,36 @@ export function CatalogShell({
   }, [filtered, shelf])
 
   const cfg = SHELF[shelfStyle]
+
+  function onDragStart({ active }: DragStartEvent) {
+    setActiveId(active.id as string)
+  }
+
+  function onDragEnd({ active, over }: DragEndEvent) {
+    setActiveId(null)
+    if (!over || active.id === over.id) return
+
+    const oldIdx = localProducts.findIndex(p => p.id === active.id)
+    const newIdx = localProducts.findIndex(p => p.id === over.id)
+    if (oldIdx === -1 || newIdx === -1) return
+
+    const newOrder = arrayMove(localProducts, oldIdx, newIdx)
+    setLocalProducts(newOrder)
+    updateProductsOrder(newOrder.map((p, i) => ({ id: p.id, sort_order: i })))
+  }
+
+  const dragOverlay = activeProduct ? (
+    <div style={{
+      opacity: 0.92,
+      transform: 'scale(1.06) rotate(2deg)',
+      boxShadow: '0 20px 40px rgba(0,0,0,0.35)',
+      borderRadius: 12,
+      pointerEvents: 'none',
+      width: 120,
+    }}>
+      <ProductCard product={activeProduct} isFavorite={favorites.has(activeProduct.id)} />
+    </div>
+  ) : null
 
   return (
     <div>
@@ -188,6 +428,7 @@ export function CatalogShell({
           onChange={e => setSortKey(e.target.value as SortKey)}
           className="text-sm border border-amber-200 rounded-lg px-2 py-2 bg-white text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300"
         >
+          <option value="custom">自訂排序</option>
           <option value="date">入手日期</option>
           <option value="name">名稱</option>
           <option value="price">入手價格</option>
@@ -215,143 +456,172 @@ export function CatalogShell({
           )}
         </div>
 
-        {shelf && (
-          <div className="flex gap-1 flex-shrink-0">
-            {([['dark', '🌰'], ['light', '🪵'], ['plain', '▦']] as [ShelfStyle, string][]).map(([s, icon]) => (
-              <button
-                key={s}
-                onClick={() => handleStyleChange(s)}
-                title={{ dark: '深色木紋', light: '淺色木紋', plain: '無木紋' }[s]}
-                className={`text-xs px-2 py-1 rounded-full border transition-all ${
-                  shelfStyle === s
-                    ? 'bg-amber-400 text-white border-amber-400 shadow-sm'
-                    : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50'
-                }`}
-              >
-                {icon}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {isDraggable && (
+            <span className="text-xs text-amber-500 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+              長按⠿可拖曳排序
+            </span>
+          )}
+
+          {shelf && (
+            <div className="flex gap-1">
+              {([['dark', '🌰'], ['light', '🪵'], ['plain', '▦']] as [ShelfStyle, string][]).map(([s, icon]) => (
+                <button
+                  key={s}
+                  onClick={() => handleStyleChange(s)}
+                  title={{ dark: '深色木紋', light: '淺色木紋', plain: '無木紋' }[s]}
+                  className={`text-xs px-2 py-1 rounded-full border transition-all ${
+                    shelfStyle === s
+                      ? 'bg-amber-400 text-white border-amber-400 shadow-sm'
+                      : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50'
+                  }`}
+                >
+                  {icon}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Products ── */}
-      {shelf ? (
-        <div
-          className="rounded-lg overflow-hidden"
-          style={{
-            backgroundColor: cfg.frameColor,
-            padding: cfg.framePad,
-            boxShadow: cfg.frameShadow,
-          }}
-        >
-          {rows.map((rowItems, rowIdx) => (
-            <div key={rowIdx}>
-              {/*
-                CSS grid with grid-auto-flow:column so items lay out left-to-right.
-                grid-auto-columns sizes each track to exactly 1/COLS of the container,
-                so 3 fit without scrolling; the 4th+ overflows → horizontal scroll.
-                The frame background colour shows through the gap → acts as dividers.
-              */}
-              <div
-                className="scrollbar-hide"
-                style={{
-                  display: 'grid',
-                  gridAutoFlow: 'column',
-                  gridAutoColumns: `calc((100% - ${cfg.colGap * (COLS - 1)}px) / ${COLS})`,
-                  gap: cfg.colGap,
-                  overflowX: 'auto',
-                  scrollSnapType: 'x mandatory',
-                  msOverflowStyle: 'none',
-                  scrollbarWidth: 'none',
-                } as React.CSSProperties}
-              >
-                {rowItems.map((p, colIdx) => (
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+      >
+        <SortableContext items={sortableIds} strategy={rectSortingStrategy}>
+          {shelf ? (
+            <div
+              className="rounded-lg overflow-hidden"
+              style={{
+                backgroundColor: cfg.frameColor,
+                padding: cfg.framePad,
+                boxShadow: cfg.frameShadow,
+              }}
+            >
+              {rows.map((rowItems, rowIdx) => (
+                <div key={rowIdx}>
                   <div
-                    key={p ? p.id : `e-${rowIdx}-${colIdx}`}
+                    className="scrollbar-hide"
                     style={{
-                      minHeight: 90,
-                      backgroundColor: cfg.cellBg,
-                      boxShadow: cfg.cellShadow,
-                      padding: cfg.cellPad,
-                      scrollSnapAlign: 'start',
-                    }}
+                      display: 'grid',
+                      gridAutoFlow: 'column',
+                      gridAutoColumns: `calc((100% - ${cfg.colGap * (COLS - 1)}px) / ${COLS})`,
+                      gap: cfg.colGap,
+                      overflowX: 'auto',
+                      scrollSnapType: 'x mandatory',
+                      msOverflowStyle: 'none',
+                      scrollbarWidth: 'none',
+                    } as React.CSSProperties}
                   >
-                    {p ? (
-                      <ProductCard
-                        product={p}
-                        isFavorite={favorites.has(p.id)}
-                        onToggleFavorite={toggleFavorite}
-                        onSelect={setSelectedProduct}
-                      />
-                    ) : (
-                      /* Empty state messages appear in center cell of middle row */
-                      rowIdx === 1 && colIdx === 1 && products.length === 0 ? (
-                        <div style={{
-                          height: '100%', display: 'flex', flexDirection: 'column',
-                          alignItems: 'center', justifyContent: 'center',
-                          gap: 6, color: cfg.emptyTextColor, padding: '12px 0',
-                        }}>
-                          {cabinetEmoji && <span style={{ fontSize: 34 }}>{cabinetEmoji}</span>}
-                          <span style={{ fontSize: 14, fontWeight: 600 }}>還沒有收藏</span>
-                          <span style={{ fontSize: 12, opacity: 0.75 }}>點右下角 + 新增</span>
+                    {rowItems.map((p, colIdx) =>
+                      p ? (
+                        <SortableShelfCell
+                          key={p.id}
+                          product={p}
+                          cfg={cfg}
+                          isDraggable={isDraggable}
+                          favorites={favorites}
+                          onToggleFavorite={toggleFavorite}
+                          onSelect={setSelectedProduct}
+                          rowIdx={rowIdx}
+                          colIdx={colIdx}
+                          showEmpty={false}
+                          cabinetEmoji={cabinetEmoji}
+                          hasProducts={products.length > 0}
+                          filteredEmpty={filtered.length === 0}
+                          emptyTextColor={cfg.emptyTextColor}
+                        />
+                      ) : (
+                        <div
+                          key={`e-${rowIdx}-${colIdx}`}
+                          style={{
+                            minHeight: 90,
+                            backgroundColor: cfg.cellBg,
+                            boxShadow: cfg.cellShadow,
+                            padding: cfg.cellPad,
+                            scrollSnapAlign: 'start',
+                          }}
+                        >
+                          {rowIdx === 1 && colIdx === 1 && products.length === 0 ? (
+                            <div style={{
+                              height: '100%', display: 'flex', flexDirection: 'column',
+                              alignItems: 'center', justifyContent: 'center',
+                              gap: 6, color: cfg.emptyTextColor, padding: '12px 0',
+                            }}>
+                              {cabinetEmoji && <span style={{ fontSize: 34 }}>{cabinetEmoji}</span>}
+                              <span style={{ fontSize: 14, fontWeight: 600 }}>還沒有收藏</span>
+                              <span style={{ fontSize: 12, opacity: 0.75 }}>點右下角 + 新增</span>
+                            </div>
+                          ) : rowIdx === 1 && colIdx === 1 && filtered.length === 0 ? (
+                            <div style={{
+                              height: '100%', display: 'flex',
+                              alignItems: 'center', justifyContent: 'center',
+                              color: cfg.emptyTextColor, fontSize: 13, padding: '12px 0',
+                            }}>
+                              找不到符合的商品
+                            </div>
+                          ) : null}
                         </div>
-                      ) : rowIdx === 1 && colIdx === 1 && filtered.length === 0 ? (
-                        <div style={{
-                          height: '100%', display: 'flex',
-                          alignItems: 'center', justifyContent: 'center',
-                          color: cfg.emptyTextColor, fontSize: 13, padding: '12px 0',
-                        }}>
-                          找不到符合的商品
-                        </div>
-                      ) : null
+                      )
                     )}
                   </div>
-                ))}
-              </div>
 
-              {/* Shelf board below each row */}
-              <div style={{
-                height: cfg.boardH,
-                backgroundImage: cfg.boardBg,
-                boxShadow: cfg.boardShadow,
-              }} />
+                  {/* Shelf board below each row */}
+                  <div style={{
+                    height: cfg.boardH,
+                    backgroundImage: cfg.boardBg,
+                    boxShadow: cfg.boardShadow,
+                  }} />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      ) : horizontal ? (
-        <div
-          className="flex gap-3 overflow-x-auto scrollbar-hide pb-2"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
-          {filtered.length === 0 ? (
-            <div className="flex-1 text-center py-12 text-amber-400">找不到符合的商品</div>
-          ) : filtered.map(p => (
-            <div key={p.id} className="flex-shrink-0 w-36 sm:w-44">
-              <ProductCard
-                product={p}
-                isFavorite={favorites.has(p.id)}
-                onToggleFavorite={toggleFavorite}
-                onSelect={setSelectedProduct}
-              />
+          ) : horizontal ? (
+            <div
+              className="flex gap-3 overflow-x-auto scrollbar-hide pb-2"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
+            >
+              {filtered.length === 0 ? (
+                <div className="flex-1 text-center py-12 text-amber-400">找不到符合的商品</div>
+              ) : filtered.map(p => (
+                <SortableGridItem
+                  key={p.id}
+                  product={p}
+                  isDraggable={isDraggable}
+                  favorites={favorites}
+                  onToggleFavorite={toggleFavorite}
+                  onSelect={setSelectedProduct}
+                  className="flex-shrink-0 w-36 sm:w-44"
+                />
+              ))}
             </div>
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-12 text-amber-400">找不到符合的商品</div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 items-stretch">
-          {filtered.map(p => (
-            <ProductCard
-              key={p.id}
-              product={p}
-              isFavorite={favorites.has(p.id)}
-              onToggleFavorite={toggleFavorite}
-              onSelect={setSelectedProduct}
-            />
-          ))}
-        </div>
-      )}
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-12 text-amber-400">找不到符合的商品</div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 items-stretch">
+              {filtered.map(p => (
+                <SortableGridItem
+                  key={p.id}
+                  product={p}
+                  isDraggable={isDraggable}
+                  favorites={favorites}
+                  onToggleFavorite={toggleFavorite}
+                  onSelect={setSelectedProduct}
+                />
+              ))}
+            </div>
+          )}
+        </SortableContext>
+
+        <DragOverlay dropAnimation={{
+          duration: 200,
+          easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+        }}>
+          {dragOverlay}
+        </DragOverlay>
+      </DndContext>
 
       <QuickViewDrawer
         product={selectedProduct}

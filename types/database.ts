@@ -21,6 +21,7 @@ export interface Product {
   notes: string | null
   search_keywords: string | null
   cabinet_id: string | null
+  sort_order: number | null
   created_at: string
   updated_at: string
 }

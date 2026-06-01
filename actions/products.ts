@@ -71,6 +71,17 @@ export async function updateProduct(id: string, formData: FormData) {
   redirect('/admin')
 }
 
+export async function updateProductsOrder(
+  updates: { id: string; sort_order: number }[]
+) {
+  const supabase = createClient()
+  await Promise.all(
+    updates.map(({ id, sort_order }) =>
+      supabase.from('products').update({ sort_order }).eq('id', id)
+    )
+  )
+}
+
 export async function deleteProduct(id: string) {
   const supabase = createClient()
 
