@@ -15,7 +15,7 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
 }
 
 const STATUS_ORDER: ProductStatus[] = ['new', 'used', 'damaged']
-const STATUS_LABEL: Record<ProductStatus, string> = { new: '全新', used: '二手', damaged: '損壞' }
+const STATUS_LABEL: Record<ProductStatus, string> = { new: '全新', used: '二手', damaged: '已出售' }
 
 const ACCENT: Record<string, { bar: string; text: string; count: string; bg: string }> = {
   amber:   { bar: 'bg-amber-400',   text: 'text-amber-700',   count: 'bg-amber-100 text-amber-600',   bg: 'bg-amber-50' },

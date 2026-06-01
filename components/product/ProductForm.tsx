@@ -76,7 +76,7 @@ export function ProductForm({ product, cabinets, defaultCabinetId, action, submi
         >
           <option value="new">全新</option>
           <option value="used">二手</option>
-          <option value="damaged">損壞</option>
+          <option value="damaged">已出售</option>
         </select>
       </div>
 

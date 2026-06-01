@@ -26,7 +26,7 @@ function buildChartData(history: PriceHistory[]): ChartDataPoint[] {
 const STATUS_LABEL: Record<string, string> = {
   new: '全新',
   used: '二手',
-  damaged: '損壞',
+  damaged: '已出售',
 }
 
 function NavArrow({ direction }: { direction: 'left' | 'right' }) {

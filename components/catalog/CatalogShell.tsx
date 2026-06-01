@@ -33,7 +33,7 @@ const TABS = [
   { key: 'favorite', label: '⭐ 收藏' },
   { key: 'new', label: '全新' },
   { key: 'used', label: '二手' },
-  { key: 'damaged', label: '損壞' },
+  { key: 'damaged', label: '已出售' },
 ]
 
 const ROWS = 3
@@ -307,6 +307,9 @@ export function CatalogShell({
     catch { return new Set() }
   })
 
+  // Toggle: shelf → full grid view
+  const [showGrid, setShowGrid] = useState(false)
+
   // Local products state — preserves drag order
   const [localProducts, setLocalProducts] = useState<Product[]>(products)
 
@@ -465,7 +468,20 @@ export function CatalogShell({
 
           {shelf && (
             <div className="flex gap-1">
-              {([['dark', '🌰'], ['light', '🪵'], ['plain', '▦']] as [ShelfStyle, string][]).map(([s, icon]) => (
+              {/* Grid / Shelf toggle */}
+              <button
+                onClick={() => setShowGrid(v => !v)}
+                title={showGrid ? '切換書架模式' : '顯示全部格狀'}
+                className={`text-xs px-2 py-1 rounded-full border transition-all ${
+                  showGrid
+                    ? 'bg-amber-400 text-white border-amber-400 shadow-sm'
+                    : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50'
+                }`}
+              >
+                {showGrid ? '📚書架' : '⊞全部'}
+              </button>
+              {/* Shelf style switcher — hidden in grid mode */}
+              {!showGrid && ([['dark', '🌰'], ['light', '🪵'], ['plain', '▦']] as [ShelfStyle, string][]).map(([s, icon]) => (
                 <button
                   key={s}
                   onClick={() => handleStyleChange(s)}
@@ -492,7 +508,7 @@ export function CatalogShell({
         onDragEnd={onDragEnd}
       >
         <SortableContext items={sortableIds} strategy={rectSortingStrategy}>
-          {shelf ? (
+          {shelf && !showGrid ? (
             <div
               className="rounded-lg overflow-hidden"
               style={{
