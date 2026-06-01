@@ -128,7 +128,7 @@ export function CatalogShell({
     setFavorites(prev => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
-      localStorage.setItem('purin-favorites', JSON.stringify([...next]))
+      localStorage.setItem('purin-favorites', JSON.stringify(Array.from(next)))
       return next
     })
   }
