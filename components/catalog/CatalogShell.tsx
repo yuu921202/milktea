@@ -119,13 +119,6 @@ function SortableShelfCell({
   favorites,
   onToggleFavorite,
   onSelect,
-  rowIdx,
-  colIdx,
-  showEmpty,
-  cabinetEmoji,
-  hasProducts,
-  filteredEmpty,
-  emptyTextColor,
 }: {
   product: Product
   cfg: typeof SHELF[ShelfStyle]
@@ -133,13 +126,6 @@ function SortableShelfCell({
   favorites: Set<string>
   onToggleFavorite: (id: string) => void
   onSelect: (p: Product) => void
-  rowIdx: number
-  colIdx: number
-  showEmpty: boolean
-  cabinetEmoji?: string
-  hasProducts: boolean
-  filteredEmpty: boolean
-  emptyTextColor: string
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: product.id,
@@ -478,7 +464,7 @@ export function CatalogShell({
                     : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50'
                 }`}
               >
-                {showGrid ? '📚書架' : '⊞全部'}
+                {showGrid ? '書架' : '全部'}
               </button>
               {/* Shelf style switcher — hidden in grid mode */}
               {!showGrid && ([['dark', '🌰'], ['light', '🪵'], ['plain', '▦']] as [ShelfStyle, string][]).map(([s, icon]) => (
@@ -509,6 +495,7 @@ export function CatalogShell({
       >
         <SortableContext items={sortableIds} strategy={rectSortingStrategy}>
           {shelf && !showGrid ? (
+            /* ── Shelf: 3 fixed rows, horizontal scroll per row ── */
             <div
               className="rounded-lg overflow-hidden"
               style={{
@@ -542,13 +529,6 @@ export function CatalogShell({
                           favorites={favorites}
                           onToggleFavorite={toggleFavorite}
                           onSelect={setSelectedProduct}
-                          rowIdx={rowIdx}
-                          colIdx={colIdx}
-                          showEmpty={false}
-                          cabinetEmoji={cabinetEmoji}
-                          hasProducts={products.length > 0}
-                          filteredEmpty={filtered.length === 0}
-                          emptyTextColor={cfg.emptyTextColor}
                         />
                       ) : (
                         <div
@@ -593,6 +573,55 @@ export function CatalogShell({
                   }} />
                 </div>
               ))}
+            </div>
+          ) : shelf && showGrid ? (
+            /* ── Shelf grid: same cell style but vertical wrap layout ── */
+            <div
+              className="rounded-lg overflow-hidden"
+              style={{
+                backgroundColor: cfg.frameColor,
+                padding: cfg.framePad,
+                boxShadow: cfg.frameShadow,
+              }}
+            >
+              {filtered.length === 0 ? (
+                <div style={{
+                  minHeight: 200, display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                  gap: 8, color: cfg.emptyTextColor, backgroundColor: cfg.cellBg,
+                  boxShadow: cfg.cellShadow,
+                }}>
+                  {products.length === 0 && cabinetEmoji && <span style={{ fontSize: 34 }}>{cabinetEmoji}</span>}
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>
+                    {products.length === 0 ? '還沒有收藏' : '找不到符合的商品'}
+                  </span>
+                  {products.length === 0 && <span style={{ fontSize: 12, opacity: 0.75 }}>點右下角 + 新增</span>}
+                </div>
+              ) : (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+                  gap: cfg.colGap,
+                }}>
+                  {filtered.map(p => (
+                    <SortableShelfCell
+                      key={p.id}
+                      product={p}
+                      cfg={cfg}
+                      isDraggable={isDraggable}
+                      favorites={favorites}
+                      onToggleFavorite={toggleFavorite}
+                      onSelect={setSelectedProduct}
+                    />
+                  ))}
+                </div>
+              )}
+              {/* Bottom shelf board */}
+              <div style={{
+                height: cfg.boardH,
+                backgroundImage: cfg.boardBg,
+                boxShadow: cfg.boardShadow,
+              }} />
             </div>
           ) : horizontal ? (
             <div
