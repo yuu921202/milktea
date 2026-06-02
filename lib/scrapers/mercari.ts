@@ -76,8 +76,9 @@ function findItems(data: unknown): Record<string, unknown>[] | null {
 
 function extractPricesFromHtml(html: string): ScrapeResult[] {
   const prices: number[] = []
-  // Match "price":"1234" or "price":1234 patterns in JSON blobs
-  for (const m of html.matchAll(/"price"\s*:\s*"?(\d+)"?/g)) {
+  const re = /"price"\s*:\s*"?(\d+)"?/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(html)) !== null) {
     const p = parseInt(m[1], 10)
     if (p > 0) {
       const twd = Math.round(p * JPY_TO_TWD)
