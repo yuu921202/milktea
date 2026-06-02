@@ -5,7 +5,7 @@ import type { ScrapeResult, ProductScrapeTarget } from './types'
 const JPY_TO_TWD = 0.209
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
 // Remote Chromium binary for serverless (cached in /tmp after first download)
-const CHROMIUM_REMOTE = 'https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.tar'
+const CHROMIUM_REMOTE = 'https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.x64.tar'
 
 export async function scrapeWithPlaywright(product: ProductScrapeTarget): Promise<ScrapeResult[]> {
   const keyword = product.search_keywords || product.name
