@@ -9,8 +9,8 @@ const nextConfig = {
       },
     ],
   },
-  serverExternalPackages: ['@sparticuz/chromium-min', 'puppeteer-core'],
   experimental: {
+    serverComponentsExternalPackages: ['@sparticuz/chromium-min', 'puppeteer-core'],
     serverActions: {
       bodySizeLimit: '10mb',
     },
